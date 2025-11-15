@@ -136,7 +136,7 @@ function setupLibraryListener() {
     libraryUnsubscribe = null;
   }
 
-  const docRef = doc(db, `artifacts/${appId}/users/${userId}/library_data/books`);
+  const docRef = doc(db, `users/${userId}/library_data/books`);
 
   const initializeLibrary = async () => {
     try {
@@ -173,7 +173,7 @@ function setupLibraryListener() {
 // --- Library Management Actions ---
 async function addBookToLibrary(bookId) {
   if (!db || !userId) return;
-  const docRef = doc(db, `artifacts/${appId}/users/${userId}/library_data/books`);
+const docRef = doc(db, `users/${userId}/library_data/books`);
 
   try {
     const currentIds = libraryBooks.map(b => b.id);
@@ -188,7 +188,7 @@ async function addBookToLibrary(bookId) {
 
 async function removeBookFromLibrary(bookId) {
   if (!db || !userId) return;
-  const docRef = doc(db, `artifacts/${appId}/users/${userId}/library_data/books`);
+const docRef = doc(db, `users/${userId}/library_data/books`);
 
   try {
     const currentIds = libraryBooks.map(b => b.id);
