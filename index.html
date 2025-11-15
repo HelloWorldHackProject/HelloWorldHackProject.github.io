@@ -5,10 +5,9 @@
   <title>Kids Reading Corner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- TailwindCSS CDN -->
+  <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Optional: custom Tailwind config -->
   <script>
     tailwind.config = {
       theme: {
@@ -21,7 +20,7 @@
     };
   </script>
 
-  <!-- Lucide icons (BookOpen, Gamepad2, Settings, Volume2, etc.) -->
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <!-- Custom Styles -->
@@ -29,31 +28,29 @@
 </head>
 
 <body class="bg-gray-200 font-sans">
-  <!-- Root App Container -->
   <div id="app-root" class="min-h-screen p-4 sm:p-8">
-    <!-- Fallback content while JS loads -->
     <div class="max-w-7xl mx-auto text-center text-gray-500">
       Loading Reading Corner...
     </div>
   </div>
-<script>
-  window.__firebase_config = JSON.stringify({
-    apiKey: "AIzaSyCV-odih1iwo4LtvMod3unbQn2KIB-xWmA",
-    authDomain: "hackathon-e14d8.firebaseapp.com",
-    projectId: "hackathon-e14d8",
-    storageBucket: "hackathon-e14d8.firebasestorage.googleapis.com",
-    messagingSenderId: "351649267688",
-    appId: "1:351649267688:web:3a4a577ff2c104768dae5d",
-    measurementId: "G-7NVMJVWM7Z"
-  });
 
-  /* This identifies your app’s Firestore namespace in our app.js logic */
-  window.__app_id = "hackathon-e14d8";
+  <!-- Firebase Config -->
+  <script>
+    window.__firebase_config = JSON.stringify({
+      apiKey: "AIzaSyCV-odih1iwo4LtvMod3unbQn2KIB-xWmA",
+      authDomain: "hackathon-e14d8.firebaseapp.com",
+      projectId: "hackathon-e14d8",
+      storageBucket: "hackathon-e14d8.appspot.com",
+      messagingSenderId: "351649267688",
+      appId: "1:351649267688:web:3a4a577ff2c104768dae5d",
+      measurementId: "G-7NVMJVWM7Z"
+    });
 
-  /* No custom token? Leave null so the app anonymous-signs in */
-  window.__initial_auth_token = null;
-</script>
+    window.__app_id = "hackathon-e14d8";
+    window.__initial_auth_token = null;
+  </script>
 
+  <!-- Main logic -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
