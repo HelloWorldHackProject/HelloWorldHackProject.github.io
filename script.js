@@ -990,11 +990,12 @@ function renderApp() {
       : "";
 
   root.innerHTML = `
-    <div class="max-w-7xl mx-auto">
-      ${contentHTML}
-      ${userIdDisplay}
-    </div>
-  ];
+  <div class="max-w-7xl mx-auto">
+    ${contentHTML}
+    ${userIdDisplay}
+  </div>
+`;
+
 
   // Turn all <i data-lucide> into SVG icons
   if (window.lucide) {
