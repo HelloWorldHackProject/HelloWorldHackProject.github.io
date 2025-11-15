@@ -52,6 +52,14 @@
   </script>
 
   <!-- Main logic -->
-  <script type="module" src="script.js"></script>
+<!-- Firebase config -->
+<script>
+  window.__firebase_config = JSON.stringify({ ... })
+  window.__app_id = "hackathon-e14d8";
+  window.__initial_auth_token = null;
+</script>
+
+<!-- NOW load script.js -->
+<script type="module" src="script.js"></script>
 </body>
 </html>
