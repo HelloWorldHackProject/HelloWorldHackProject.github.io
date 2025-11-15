@@ -1,4 +1,4 @@
-// app.js (vanilla JS version of your React app)
+// script.js (vanilla JS Reading Corner with Gemini TTS + Gemini Live Coach)
 
 // --- Firebase imports (modular SDK, via CDN) ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
@@ -19,17 +19,20 @@ import {
 const appId = typeof window.__app_id !== "undefined" ? window.__app_id : "default-app-id";
 const firebaseConfig = typeof window.__firebase_config !== "undefined"
   ? JSON.parse(window.__firebase_config)
-  : {}; // <-- OR hardcode config here instead
+  : {};
 const initialAuthToken = typeof window.__initial_auth_token !== "undefined"
   ? window.__initial_auth_token
   : null;
 
-// 🔑 Gemini API
+// 🔑 Gemini API (for TTS NARRATION)
 const API_KEY = ""; // <-- Put your Gemini API key here
 const TTS_API_URL =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent";
 
-// --- Book metadata (same as React version) ---
+// 🔌 Flask API (for GEMINI LIVE COACH FEEDBACK)
+const FLASK_API_URL = "http://localhost:5000/api/process-audio";
+
+// --- Book metadata ---
 const ALL_AVAILABLE_BOOKS = [
   { id: "book1", title: "Why Is It So Hot Today?", filename: "book 1.pdf" },
   { id: "book2", title: "Saving the Moon", filename: "book 2.pdf" },
@@ -52,7 +55,7 @@ const ROYGBIV_COLORS = [
 
 const getFileUrl = (fileName) => `${fileName}`;
 
-// --- Global State (replaces React useState) ---
+// --- Global State ---
 let db = null;
 let auth = null;
 let userId = null;
@@ -61,14 +64,27 @@ let view = "home"; // 'home', 'library', 'add_library', 'reading'
 let libraryBooks = [];
 let selectedBook = null;
 
+// TTS narration state
 let ttsState = {
   isLoading: false,
-  message: 'Tap "Start Reading" to hear the book being read!',
+  message: 'Tap "Start Story Voice" to hear the book being read!',
   audioUrl: null
 };
 
-let audioElement = null;
+let audioElement = null; // story narration audio element
 let libraryUnsubscribe = null;
+
+// Gemini Live coach state
+const coachState = {
+  isRecording: false,
+  isProcessing: false,
+  audioUrl: null,
+  status: "Tap the purple microphone and read a sentence to your coach!"
+};
+
+let coachMediaRecorder = null;
+let coachAudioChunks = [];
+let coachAudioElement = null; // hidden <audio> element for feedback playback
 
 // --- Firebase Initialization and Auth ---
 function initFirebase() {
@@ -77,7 +93,6 @@ function initFirebase() {
     db = getFirestore(app);
     auth = getAuth(app);
 
-    // Auth state listener
     onAuthStateChanged(auth, async (user) => {
       let currentUserId = user ? user.uid : null;
 
@@ -91,12 +106,10 @@ function initFirebase() {
       userId = currentUserId;
       isAuthReady = true;
 
-      // After we know the user, set up Firestore listener
       setupLibraryListener();
       renderApp();
     });
 
-    // Sign-in logic as in React version
     const signIn = async () => {
       try {
         if (initialAuthToken) {
@@ -106,7 +119,6 @@ function initFirebase() {
         }
       } catch (e) {
         console.error("Authentication failed:", e);
-        // Fallback to anonymous
         await signInAnonymously(auth);
       }
     };
@@ -119,7 +131,6 @@ function initFirebase() {
 function setupLibraryListener() {
   if (!isAuthReady || !userId || !db) return;
 
-  // Avoid multiple listeners if somehow called again
   if (libraryUnsubscribe) {
     libraryUnsubscribe();
     libraryUnsubscribe = null;
@@ -127,7 +138,6 @@ function setupLibraryListener() {
 
   const docRef = doc(db, `artifacts/${appId}/users/${userId}/library_data/books`);
 
-  // Initialize library with all books on first run
   const initializeLibrary = async () => {
     try {
       await setDoc(docRef, { addedBookIds: ALL_BOOK_IDS }, { merge: true });
@@ -140,7 +150,6 @@ function setupLibraryListener() {
     docRef,
     (docSnap) => {
       if (!docSnap.exists()) {
-        // First-time user, pre-populate
         initializeLibrary();
       }
 
@@ -151,7 +160,6 @@ function setupLibraryListener() {
       );
       libraryBooks = userLibrary;
 
-      // Re-render if in views that show books
       if (["library", "add_library"].includes(view)) {
         renderApp();
       }
@@ -191,7 +199,20 @@ async function removeBookFromLibrary(bookId) {
   }
 }
 
-// --- TTS Utilities ---
+// --- Shared Utility: Blob → Base64 ---
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64Data = reader.result.split(",")[1];
+      resolve(base64Data);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// --- TTS Utilities (Story Voice) ---
 function base64ToArrayBuffer(base64) {
   const binaryString = window.atob(base64);
   const len = binaryString.length;
@@ -239,14 +260,17 @@ function pcmToWav(pcm16, sampleRate) {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
-// --- TTS Handlers ---
+// --- TTS Handlers (Story Voice) ---
 async function handleListenToBook(retries = 3, delay = 1000) {
   if (!selectedBook) return;
+
+  // If coach feedback is playing, stop it so we don't record the TTS
+  stopCoachPlaybackOnly();
 
   const ttsPrompt = `Say cheerfully: Welcome to the book, ${selectedBook.title}! I'm your reading coach. Let's start reading!`;
 
   ttsState.isLoading = true;
-  ttsState.message = "Getting ready to read...";
+  ttsState.message = "Getting ready to read your story...";
   updateTtsUI();
 
   if (audioElement) {
@@ -305,7 +329,7 @@ async function handleListenToBook(retries = 3, delay = 1000) {
         }
 
         ttsState.isLoading = false;
-        ttsState.message = `The coach is reading "${selectedBook.title}"! Time to turn the pages!`;
+        ttsState.message = `The story voice is reading "${selectedBook.title}"! Follow along on the page.`;
         ttsState.audioUrl = audioUrl;
         updateTtsUI();
         return;
@@ -316,7 +340,7 @@ async function handleListenToBook(retries = 3, delay = 1000) {
       console.error("TTS error:", e);
       if (i === retries - 1) {
         ttsState.isLoading = false;
-        ttsState.message = "Uh oh! The coach is taking a nap. Try again!";
+        ttsState.message = "Uh oh! The story voice is taking a nap. Try again!";
         ttsState.audioUrl = null;
         updateTtsUI();
       } else {
@@ -335,7 +359,7 @@ function handleStopListening() {
     URL.revokeObjectURL(ttsState.audioUrl);
   }
   ttsState.isLoading = false;
-  ttsState.message = "Reading stopped. Ready to start again.";
+  ttsState.message = 'Reading stopped. Tap "Start Story Voice" to listen again.';
   ttsState.audioUrl = null;
   updateTtsUI();
 }
@@ -344,7 +368,7 @@ function updateTtsUI() {
   const msgEl = document.getElementById("tts-message");
   const startBtn = document.getElementById("btn-start-reading");
 
-  if (!msgEl || !startBtn) return; // Not in reading view
+  if (!msgEl || !startBtn) return;
 
   msgEl.textContent = ttsState.message;
 
@@ -362,17 +386,251 @@ function updateTtsUI() {
     startBtn.classList.add("bg-pink-600", "hover:bg-pink-700");
     startBtn.innerHTML = `
       <i data-lucide="volume-2" class="w-5 h-5 mr-2"></i>
-      Start Reading
+      Start Story Voice
     `;
   }
 
-  // Re-apply icons (Lucide converts <i data-lucide> to SVG)
   if (window.lucide) {
     window.lucide.createIcons();
   }
 }
 
-// --- View Renderers (HTML strings) ---
+// --- Gemini Live Coach (Flask bridge) ---
+function updateCoachUI() {
+  const statusEl = document.getElementById("coach-status");
+  const recordBtn = document.getElementById("btn-coach-record");
+  const stopBtn = document.getElementById("btn-coach-stop");
+  const playBtn = document.getElementById("btn-coach-play-feedback");
+  const resetBtn = document.getElementById("btn-coach-reset");
+
+  if (statusEl) {
+    statusEl.textContent = coachState.status;
+  }
+
+  if (recordBtn) {
+    const disabled = coachState.isRecording || coachState.isProcessing;
+    recordBtn.disabled = disabled;
+    recordBtn.classList.toggle("opacity-50", disabled);
+    recordBtn.classList.toggle("cursor-not-allowed", disabled);
+  }
+
+  if (stopBtn) {
+    const disabled = !coachState.isRecording;
+    stopBtn.disabled = disabled;
+    stopBtn.classList.toggle("opacity-50", disabled);
+    stopBtn.classList.toggle("cursor-not-allowed", disabled);
+  }
+
+  if (playBtn) {
+    const disabled = !coachState.audioUrl || coachState.isRecording || coachState.isProcessing;
+    playBtn.disabled = disabled;
+    playBtn.classList.toggle("opacity-50", disabled);
+    playBtn.classList.toggle("cursor-not-allowed", disabled);
+  }
+
+  if (resetBtn) {
+    const disabled = coachState.isRecording || coachState.isProcessing;
+    resetBtn.disabled = disabled;
+    resetBtn.classList.toggle("opacity-50", disabled);
+    resetBtn.classList.toggle("cursor-not-allowed", disabled);
+  }
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+async function startCoachRecording() {
+  if (coachState.isRecording || coachState.isProcessing) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    coachState.status = "Microphone not available on this device.";
+    updateCoachUI();
+    return;
+  }
+
+  // Stop story narration so the mic doesn't pick it up
+  handleStopListening();
+
+  // Stop any feedback playback currently running
+  stopCoachPlaybackOnly();
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    coachMediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    coachAudioChunks = [];
+
+    coachMediaRecorder.ondataavailable = (event) => {
+      coachAudioChunks.push(event.data);
+    };
+
+    coachMediaRecorder.onstop = () => {
+      stream.getTracks().forEach(track => track.stop());
+      sendCoachRecordingToFlask();
+    };
+
+    coachMediaRecorder.start();
+    coachState.isRecording = true;
+    coachState.status = "Listening... Read the sentence to your coach!";
+    updateCoachUI();
+  } catch (error) {
+    console.error("Error starting recording:", error);
+    coachState.status = `Error accessing microphone: ${error.message}`;
+    coachState.isRecording = false;
+    coachState.isProcessing = false;
+    updateCoachUI();
+  }
+}
+
+function stopCoachRecording() {
+  if (!coachState.isRecording || !coachMediaRecorder) return;
+
+  coachMediaRecorder.stop();
+  coachState.isRecording = false;
+  coachState.isProcessing = true;
+  coachState.status = "Great job! Your coach is thinking about your reading...";
+  updateCoachUI();
+}
+
+async function sendCoachRecordingToFlask() {
+  // Recorded as WEBM audio from MediaRecorder
+  const audioBlob = new Blob(coachAudioChunks, { type: "audio/webm" });
+
+  try {
+    const recordedBase64 = await blobToBase64(audioBlob);
+    coachState.status = "Sending your reading to your coach...";
+    updateCoachUI();
+
+    const response = await fetch(FLASK_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audio: recordedBase64 })
+    });
+
+    if (!response.ok) {
+      let errorMsg = `Server responded with status ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMsg = errorData.error;
+        }
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    coachState.status = "Your coach is getting your feedback ready...";
+    updateCoachUI();
+
+    const finalAudioBlob = await response.blob();
+    const playableBlob =
+      finalAudioBlob.type && finalAudioBlob.type.startsWith("audio")
+        ? finalAudioBlob
+        : new Blob([finalAudioBlob], { type: "audio/wav" });
+
+    if (coachState.audioUrl) {
+      try {
+        URL.revokeObjectURL(coachState.audioUrl);
+      } catch {}
+    }
+
+    const url = URL.createObjectURL(playableBlob);
+    coachState.audioUrl = url;
+    coachState.isProcessing = false;
+    coachState.status = "Feedback ready! Tap play to hear what your coach says.";
+    updateCoachUI();
+  } catch (error) {
+    console.error("Flask/Processing Error:", error);
+    coachState.isProcessing = false;
+    coachState.status = `Error from coach server: ${error.message}. Is Flask running?`;
+    updateCoachUI();
+  }
+}
+
+function ensureCoachAudioElement() {
+  if (!coachAudioElement) {
+    const el = document.createElement("audio");
+    el.style.display = "none";
+    el.controls = false;
+    document.body.appendChild(el);
+    coachAudioElement = el;
+  }
+}
+
+function playCoachFeedback() {
+  if (!coachState.audioUrl || coachState.isRecording || coachState.isProcessing) return;
+
+  ensureCoachAudioElement();
+
+  try {
+    coachAudioElement.src = coachState.audioUrl;
+    coachAudioElement.currentTime = 0;
+    const playPromise = coachAudioElement.play();
+
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          coachState.status = "Playing your coach's feedback...";
+          updateCoachUI();
+        })
+        .catch((err) => {
+          console.warn("Playback failed:", err);
+          coachState.status = `Playback failed: ${err.message}`;
+          updateCoachUI();
+        });
+    } else {
+      coachState.status = "Playing your coach's feedback...";
+      updateCoachUI();
+    }
+
+    coachAudioElement.onended = () => {
+      coachState.status = "Feedback played. Great work! You can try another sentence.";
+      updateCoachUI();
+    };
+  } catch (err) {
+    console.error("Play error:", err);
+    coachState.status = `Playback error: ${err.message}`;
+    updateCoachUI();
+  }
+}
+
+function stopCoachPlaybackOnly() {
+  if (coachAudioElement) {
+    try {
+      coachAudioElement.pause();
+    } catch {}
+  }
+}
+
+function resetCoachState() {
+  // Stop recording if still going
+  try {
+    if (coachMediaRecorder && coachState.isRecording) {
+      coachMediaRecorder.stop();
+    }
+  } catch {}
+
+  coachState.isRecording = false;
+  coachState.isProcessing = false;
+
+  // Stop and release feedback audio
+  if (coachAudioElement) {
+    try {
+      coachAudioElement.pause();
+      coachAudioElement.currentTime = 0;
+    } catch {}
+  }
+  if (coachState.audioUrl) {
+    try {
+      URL.revokeObjectURL(coachState.audioUrl);
+    } catch {}
+  }
+  coachState.audioUrl = null;
+
+  coachState.status = "Tap the purple microphone and read a sentence to your coach!";
+  updateCoachUI();
+}
+
+// --- View Renderers ---
 function renderHomeView() {
   return `
     <div class="relative flex flex-col items-center justify-center min-h-[70vh] p-4 bg-yellow-100 rounded-[3rem] shadow-2xl border-8 border-yellow-300">
@@ -608,32 +866,95 @@ function renderReadingView() {
 
       <!-- Reading Coach -->
       <div class="lg:w-1/3 flex flex-col gap-6 bg-white shadow-2xl rounded-2xl p-6 border-4 border-green-500">
-        <h3 class="text-3xl font-black text-green-700 border-b-4 border-green-300 pb-2 mb-4">
+        <h3 class="text-3xl font-black text-green-700 border-b-4 border-green-300 pb-2 mb-2">
           Reading Coach
         </h3>
 
-        <div class="flex-1 bg-green-100 p-6 rounded-3xl border-4 border-green-400 flex flex-col justify-center text-center shadow-lg">
-          <p id="tts-message" class="text-xl font-semibold text-gray-800">
+        <!-- Coach bubble -->
+        <div class="flex-1 bg-green-100 p-6 rounded-3xl border-4 border-green-400 flex flex-col justify-center text-center shadow-lg speech-bubble">
+          <p class="text-sm font-semibold text-green-800 uppercase tracking-wide mb-2">
+            Story Voice
+          </p>
+          <p id="tts-message" class="text-lg font-semibold text-gray-800">
             ${ttsState.message}
           </p>
+
+          <hr class="my-4 border-green-300" />
+
+          <p class="text-sm font-semibold text-green-800 uppercase tracking-wide mb-2">
+            Your Turn
+          </p>
+          <p id="coach-status" class="text-base font-medium text-green-900">
+            ${coachState.status}
+          </p>
+
           <audio id="reading-audio"></audio>
         </div>
 
-        <div class="flex flex-col space-y-4">
-          <button
-            id="btn-start-reading"
-            class="w-full py-4 px-4 rounded-full text-white font-bold transition duration-300 shadow-xl transform hover:scale-[1.01] bg-pink-600 hover:bg-pink-700 active:bg-pink-800 flex items-center justify-center"
-          >
-            <i data-lucide="volume-2" class="w-5 h-5 mr-2"></i>
-            Start Reading
-          </button>
-          <button
-            id="btn-stop-reading"
-            class="w-full py-4 px-4 rounded-full text-white font-bold transition duration-300 shadow-lg transform hover:scale-[1.01] bg-red-500 hover:bg-red-600 active:bg-red-700 flex items-center justify-center"
-          >
-            <i data-lucide="mic" class="w-5 h-5 mr-2"></i>
-            Stop Reading
-          </button>
+        <!-- Controls -->
+        <div class="flex flex-col space-y-5">
+          <!-- Story Voice Controls -->
+          <div class="space-y-2">
+            <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              Story Voice (Gemini TTS)
+            </p>
+            <div class="flex flex-row gap-3">
+              <button
+                id="btn-start-reading"
+                class="flex-1 py-3 px-4 rounded-full text-white font-bold transition duration-300 shadow-xl transform hover:scale-[1.01] bg-pink-600 hover:bg-pink-700 active:bg-pink-800 flex items-center justify-center"
+              >
+                <i data-lucide="volume-2" class="w-5 h-5 mr-2"></i>
+                Start Story Voice
+              </button>
+              <button
+                id="btn-stop-reading"
+                class="flex-1 py-3 px-4 rounded-full text-white font-bold transition duration-300 shadow-lg transform hover:scale-[1.01] bg-red-500 hover:bg-red-600 active:bg-red-700 flex items-center justify-center"
+              >
+                <i data-lucide="square" class="w-5 h-5 mr-2"></i>
+                Stop Story
+              </button>
+            </div>
+          </div>
+
+          <!-- Your Turn Controls -->
+          <div class="space-y-2">
+            <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              Your Turn (Gemini Live Coach)
+            </p>
+            <div class="flex flex-wrap gap-3">
+              <button
+                id="btn-coach-record"
+                class="flex-1 min-w-[120px] py-3 px-4 rounded-full text-white font-bold transition duration-200 shadow-xl bg-purple-600 hover:bg-purple-700 active:bg-purple-800 flex items-center justify-center"
+              >
+                <i data-lucide="mic" class="w-5 h-5 mr-2"></i>
+                Record
+              </button>
+              <button
+                id="btn-coach-stop"
+                class="flex-1 min-w-[120px] py-3 px-4 rounded-full text-white font-bold transition duration-200 shadow-xl bg-red-600 hover:bg-red-700 active:bg-red-800 flex items-center justify-center opacity-50 cursor-not-allowed"
+                disabled
+              >
+                <i data-lucide="stop-circle" class="w-5 h-5 mr-2"></i>
+                Stop
+              </button>
+              <button
+                id="btn-coach-play-feedback"
+                class="flex-1 min-w-[140px] py-3 px-4 rounded-full text-white font-bold transition duration-200 shadow-xl bg-green-600 hover:bg-green-700 active:bg-green-800 flex items-center justify-center opacity-50 cursor-not-allowed"
+                disabled
+              >
+                <i data-lucide="volume-2" class="w-5 h-5 mr-2"></i>
+                Play Feedback
+              </button>
+              <button
+                id="btn-coach-reset"
+                class="flex-1 min-w-[110px] py-3 px-4 rounded-full text-gray-700 font-semibold transition duration-200 shadow bg-gray-100 hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center opacity-50 cursor-not-allowed"
+                disabled
+              >
+                <i data-lucide="refresh-cw" class="w-5 h-5 mr-2"></i>
+                Reset
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -673,7 +994,7 @@ function renderApp() {
       ${contentHTML}
       ${userIdDisplay}
     </div>
-  `;
+  ];
 
   // Turn all <i data-lucide> into SVG icons
   if (window.lucide) {
@@ -683,13 +1004,17 @@ function renderApp() {
   // Attach events for the current view
   attachEventHandlers();
 
-  // Prepare audio + TTS UI if in reading view
+  // Prepare audio + UI if in reading view
   if (view === "reading") {
     audioElement = document.getElementById("reading-audio");
     if (audioElement) {
-      audioElement.addEventListener("ended", handleStopListening);
+      audioElement.addEventListener("ended", () => {
+        ttsState.message = 'The story voice finished. Tap "Start Story Voice" to hear it again.';
+        updateTtsUI();
+      });
     }
     updateTtsUI();
+    updateCoachUI();
   }
 }
 
@@ -712,8 +1037,6 @@ function attachEventHandlers() {
         renderApp();
       });
     }
-
-    // Play Game is disabled (no event needed)
   }
 
   if (view === "library") {
@@ -739,6 +1062,7 @@ function attachEventHandlers() {
         const bookId = btn.getAttribute("data-book-id");
         selectedBook = libraryBooks.find(b => b.id === bookId) || null;
         handleStopListening();
+        resetCoachState();
         view = "reading";
         renderApp();
       });
@@ -776,9 +1100,15 @@ function attachEventHandlers() {
     const startBtn = document.getElementById("btn-start-reading");
     const stopBtn = document.getElementById("btn-stop-reading");
 
+    const coachRecordBtn = document.getElementById("btn-coach-record");
+    const coachStopBtn = document.getElementById("btn-coach-stop");
+    const coachPlayBtn = document.getElementById("btn-coach-play-feedback");
+    const coachResetBtn = document.getElementById("btn-coach-reset");
+
     if (backLibraryBtn) {
       backLibraryBtn.addEventListener("click", () => {
         handleStopListening();
+        resetCoachState();
         view = "library";
         renderApp();
       });
@@ -786,6 +1116,8 @@ function attachEventHandlers() {
 
     if (startBtn) {
       startBtn.addEventListener("click", () => {
+        // If coach recording is active, ignore
+        if (coachState.isRecording || coachState.isProcessing) return;
         handleListenToBook();
       });
     }
@@ -793,6 +1125,30 @@ function attachEventHandlers() {
     if (stopBtn) {
       stopBtn.addEventListener("click", () => {
         handleStopListening();
+      });
+    }
+
+    if (coachRecordBtn) {
+      coachRecordBtn.addEventListener("click", () => {
+        startCoachRecording();
+      });
+    }
+
+    if (coachStopBtn) {
+      coachStopBtn.addEventListener("click", () => {
+        stopCoachRecording();
+      });
+    }
+
+    if (coachPlayBtn) {
+      coachPlayBtn.addEventListener("click", () => {
+        playCoachFeedback();
+      });
+    }
+
+    if (coachResetBtn) {
+      coachResetBtn.addEventListener("click", () => {
+        resetCoachState();
       });
     }
   }
