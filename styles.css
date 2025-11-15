@@ -1,0 +1,59 @@
+body {
+   font-family: 'Inter', sans-serif;
+}
+
+
+.page {
+   display: none;
+   width: 100%;
+   min-height: 80vh;
+}
+
+
+.page.active {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+}
+
+
+.app-title {
+   font-family: 'Comic Neue', cursive;
+}
+
+
+#game-canvas {
+   background-color: #f0f9ff;
+   border-radius: 8px;
+   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+   max-width: 100%;
+}
+
+
+.word-read {
+   color: #9ca3af;
+}
+
+
+.word-current {
+   text-decoration: underline;
+   font-weight: 600;
+}
+
+
+.word-unread {
+   color: #1f2937;
+}
+
+
+.word-error {
+   color: #e11d48;
+   font-weight: 700;
+   background-color: #ffe4e6;
+   padding: 2px 4px;
+   border-radius: 4px;
+}
+
+
+
