@@ -124,24 +124,6 @@ function initFirebase() {
 }
 
 
-    const signIn = async () => {
-      try {
-        if (initialAuthToken) {
-          await signInWithCustomToken(auth, initialAuthToken);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (e) {
-        console.error("Authentication failed:", e);
-        await signInAnonymously(auth);
-      }
-    };
-    signIn();
-  } catch (e) {
-    console.error("Firebase setup failed:", e);
-  }
-}
-
 function setupLibraryListener() {
   if (!isAuthReady || !userId || !db) return;
 
