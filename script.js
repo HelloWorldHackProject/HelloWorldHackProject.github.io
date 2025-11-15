@@ -17,9 +17,17 @@ import {
 
 // --- Global Setup (matches your React code) ---
 const appId = typeof window.__app_id !== "undefined" ? window.__app_id : "default-app-id";
-const firebaseConfig = typeof window.__firebase_config !== "undefined"
-  ? JSON.parse(window.__firebase_config)
-  : {};
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCV-odih1iwo4LtvMod3unbQn2KIB-xWmA",
+  authDomain: "hackathon-e14d8.firebaseapp.com",
+  projectId: "hackathon-e14d8",
+  storageBucket: "hackathon-e14d8.firebasestorage.app",
+  messagingSenderId: "351649267688",
+  appId: "1:351649267688:web:3a4a577ff2c104768dae5d",
+  measurementId: "G-7NVMJVWM7Z"
+};
+
 const initialAuthToken = typeof window.__initial_auth_token !== "undefined"
   ? window.__initial_auth_token
   : null;
@@ -91,25 +99,30 @@ let coachAudioElement = null; // hidden <audio> element for feedback playback
 function initFirebase() {
   try {
     const app = initializeApp(firebaseConfig);
+    // Optional: analytics only works on https + production
+    // const analytics = getAnalytics(app);
+
     db = getFirestore(app);
     auth = getAuth(app);
 
+    // Anonymous auth always
     onAuthStateChanged(auth, async (user) => {
-      let currentUserId = user ? user.uid : null;
-
       if (!user) {
-        if (!initialAuthToken) {
-          const anonUser = await signInAnonymously(auth);
-          currentUserId = anonUser.user.uid;
-        }
+        const anonUser = await signInAnonymously(auth);
+        userId = anonUser.user.uid;
+      } else {
+        userId = user.uid;
       }
 
-      userId = currentUserId;
       isAuthReady = true;
-
       setupLibraryListener();
       renderApp();
     });
+  } catch (e) {
+    console.error("Firebase setup failed:", e);
+  }
+}
+
 
     const signIn = async () => {
       try {
