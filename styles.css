@@ -1,4 +1,4 @@
-body {
+/* body {
    font-family: 'Inter', sans-serif;
 }
 
@@ -53,7 +53,75 @@ body {
    background-color: #ffe4e6;
    padding: 2px 4px;
    border-radius: 4px;
+} */
+/* * Custom Styles for the PBS Kids Style Story Hub
+ * This file contains custom CSS rules outside of Tailwind classes.
+ */
+
+/* Fixed height for the main container */
+.app-container {
+    height: 95vh;
+    min-height: 600px;
 }
+
+/* Custom scrollbar for a cleaner look */
+.scrollable::-webkit-scrollbar { 
+    width: 8px; 
+}
+.scrollable::-webkit-scrollbar-thumb { 
+    background-color: #00B0FF; /* Primary Color */
+    border-radius: 20px; 
+}
+.scrollable::-webkit-scrollbar-track { 
+    background: #E0FFFF; /* Light background */
+}
+
+/* Fun, chunky button style */
+.chunky-button {
+    border: 4px solid #000;
+    box-shadow: 0 6px 0 0 #000;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+.chunky-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 0 #000;
+}
+
+/* Button pulse animation */
+.animate-pulse-light {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* Book Card Style */
+.book-card {
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+.book-card:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+/* Reader Content Styling */
+#reader-content p {
+    font-size: 1.25rem; /* Large, easy-to-read text */
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+/* Highlight style for currently reading sentence */
+.reading-highlight {
+    background-color: #FFD700; /* Secondary color for highlighting */
+    padding: 2px 4px;
+    border-radius: 4px;
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+    transition: background-color 0.2s;
+}
+
 
 
 
