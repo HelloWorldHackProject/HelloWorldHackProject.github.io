@@ -143,8 +143,11 @@ const docRef = doc(db, "users", userId, "library", "books");
     docRef,
     (docSnap) => {
       if (!docSnap.exists()) {
+  // Initialize ONCE, then wait for snapshot to fire again
   setDoc(docRef, { addedBookIds: [] });
+  return; // <-- DO NOT process further until snapshot updates
 }
+
 
       const data = docSnap.exists() ? docSnap.data() : {};
       const addedBookIds = data.addedBookIds || [];
