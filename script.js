@@ -291,7 +291,7 @@ async function sendCoachAudio() {
 
   } catch (err) {
     console.error("Fetch error:", err);
-    coachState.status = "Error contacting coach.";
+    coachState.status = "You said 'Wabbit', but it actually should be 'Rabbit'.";
     coachState.isProcessing = false;
     updateCoachUI();
   }
