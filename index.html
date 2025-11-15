@@ -1,76 +1,59 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PBS Kids Story Hub</title>    
-<script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- Tailwind Configuration (moved from inline script to a block for clean separation) -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Bangers', 'Inter', 'sans-serif'], // Fun font for titles
-                    },
-                    colors: {
-                        'primary': '#00B0FF', // Bright Blue
-                        'secondary': '#FFD700', // Gold/Yellow
-                        'accent-pink': '#FF69B4', // Hot Pink
-                        'accent-green': '#32CD32', // Lime Green
-                        'background': '#F0FFF0', // Honeydew background
-                        'card': '#FFFFFF',
-                    }
-                }
-            }
-        }
-    </script>
+  <meta charset="UTF-8" />
+  <title>Kids Reading Corner</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Optional: custom Tailwind config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Lucide icons (BookOpen, Gamepad2, Settings, Volume2, etc.) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body class="bg-background min-h-screen flex items-center justify-center p-4 font-sans">
 
-    <div id="app" class="w-full max-w-5xl bg-card shadow-2xl rounded-2xl overflow-hidden flex flex-col app-container border-8 border-primary">
-        <!-- Header -->
-        <header class="bg-primary text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-10">
-            <h1 class="text-3xl font-display uppercase tracking-widest" id="header-title"></h1>
-            <button id="back-button" class="chunky-button bg-accent-pink text-white font-bold py-1 px-4 rounded-xl text-lg hidden" onclick="window.navigate('library')">
-                <svg class="w-6 h-6 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                BACK
-            </button>
-            <div id="loading-spinner" class="hidden">
-                <svg class="animate-spin h-6 w-6 text-secondary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-        </header>
-
-        <!-- Main Content Area (Scrollable) -->
-        <main class="flex-grow flex flex-col p-6 overflow-hidden">
-            <div id="view-container" class="flex-grow overflow-y-auto scrollable">
-                <!-- Content injected by JavaScript -->
-            </div>
-            
-            <!-- TTS Controls for Reader View (hidden in Library) -->
-            <div id="tts-controls" class="mt-4 pt-4 border-t-4 border-secondary hidden">
-                <button id="tts-button" disabled class="chunky-button bg-accent-green text-white font-bold py-4 px-6 rounded-xl text-2xl w-full hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center animate-pulse-light">
-                    <span id="tts-button-text">Start Reading</span>
-                    <svg class="w-8 h-8 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.007 2.007a8.5 8.5 0 000-12.022m-2.228 9.923A3.001 3.001 0 0115.536 8.464M12 21V3M10 18h4M8 12h8"></path></svg>
-                </button>
-            </div>
-
-            <!-- Message Box -->
-            <div id="message-box" class="mt-4 p-3 rounded-xl hidden text-center" role="alert"></div>
-
-        </main>
+<body class="bg-gray-200 font-sans">
+  <!-- Root App Container -->
+  <div id="app-root" class="min-h-screen p-4 sm:p-8">
+    <!-- Fallback content while JS loads -->
+    <div class="max-w-7xl mx-auto text-center text-gray-500">
+      Loading Reading Corner...
     </div>
+  </div>
+<script>
+  window.__firebase_config = JSON.stringify({
+    apiKey: "AIzaSyCV-odih1iwo4LtvMod3unbQn2KIB-xWmA",
+    authDomain: "hackathon-e14d8.firebaseapp.com",
+    projectId: "hackathon-e14d8",
+    storageBucket: "hackathon-e14d8.firebasestorage.app",
+    messagingSenderId: "351649267688",
+    appId: "1:351649267688:web:3a4a577ff2c104768dae5d",
+    measurementId: "G-7NVMJVWM7Z"
+  });
 
-    <!-- Application Logic -->
-    <script type="module" src="app.js"></script>
+  /* This identifies your app’s Firestore namespace in our app.js logic */
+  window.__app_id = "hackathon-e14d8";
+
+  /* No custom token? Leave null so the app anonymous-signs in */
+  window.__initial_auth_token = null;
+</script>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>
