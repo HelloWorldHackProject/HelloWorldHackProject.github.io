@@ -1,67 +1,60 @@
+/* style.css */
 
-.app-container {
-    height: 95vh;
-    min-height: 600px;
-}
-
-/* Custom scrollbar for a cleaner look */
-.scrollable::-webkit-scrollbar { 
-    width: 8px; 
-}
-.scrollable::-webkit-scrollbar-thumb { 
-    background-color: #00B0FF; /* Primary Color */
-    border-radius: 20px; 
-}
-.scrollable::-webkit-scrollbar-track { 
-    background: #E0FFFF; /* Light background */
+/* Smooth text rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Fun, chunky button style */
-.chunky-button {
-    border: 4px solid #000;
-    box-shadow: 0 6px 0 0 #000;
-    transition: transform 0.1s, box-shadow 0.1s;
-}
-.chunky-button:active {
-    transform: translateY(2px);
-    box-shadow: 0 4px 0 0 #000;
+/* PDF iframe styling override (optional) */
+iframe {
+  background: white;
 }
 
-/* Button pulse animation */
-.animate-pulse-light {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
+/* Rounded shadow helper (for aesthetics) */
+.rounded-giant {
+  border-radius: 2rem;
 }
 
-/* Book Card Style */
-.book-card {
-    transition: transform 0.2s;
-    cursor: pointer;
+/* Optional: glow/shadow for children buttons */
+.btn-bouncy {
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
+
+.btn-bouncy:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 25px rgba(0,0,0,0.15);
+}
+
+.btn-bouncy:active {
+  transform: scale(0.97);
+}
+
+/* Reading coach bubble improvement */
+.speech-bubble {
+  position: relative;
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+}
+
+.speech-bubble:after {
+  content: "";
+  position: absolute;
+  bottom: -15px;
+  left: 40px;
+  width: 0;
+  height: 0;
+  border: 15px solid transparent;
+  border-top-color: #c6f6d5; /* green-100 */
+}
+
+/* Book card hover lift */
 .book-card:hover {
-    transform: scale(1.05);
-    filter: brightness(1.1);
+  transform: translateY(-3px) scale(1.05);
+  transition: 0.2s ease;
 }
 
-/* Reader Content Styling */
-#reader-content p {
-    font-size: 1.25rem; /* Large, easy-to-read text */
-    line-height: 1.8;
-    margin-bottom: 1rem;
+/* Disable text selection for smoother UI on kids tablets */
+* {
+  user-select: none;
 }
-
-/* Highlight style for currently reading sentence */
-.reading-highlight {
-    background-color: #FFD700; /* Secondary color for highlighting */
-    padding: 2px 4px;
-    border-radius: 4px;
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
-    transition: background-color 0.2s;
-}
-
-
-
-
