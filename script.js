@@ -34,10 +34,10 @@ const FLASK_API_URL = "http://localhost:5000/api/process-audio";
 
 // --- Book metadata ---
 const ALL_AVAILABLE_BOOKS = [
-  { id: "book1", title: "Why Is It So Hot Today?", filename: "book1.pdf" },
-  { id: "book2", title: "Saving the Moon", filename: "book2.pdf" },
+  { id: "book1", title: "Why Is It So Hot Today?", filename: "book 1.pdf" },
+  { id: "book2", title: "Saving the Moon", filename: "book 2.pdf" },
   { id: "book3", title: "Dive!", filename: "book3.pdf" },
-  { id: "book4", title: "My Dream City", filename: "book4.pdf" }
+  { id: "book4", title: "My Dream City", filename: "book 4.pdf" }
 ];
 
 const ALL_BOOK_IDS = ALL_AVAILABLE_BOOKS.map(book => book.id);
@@ -136,22 +136,14 @@ function setupLibraryListener() {
     libraryUnsubscribe = null;
   }
 
-  const docRef = doc(db, `users/${userId}/library_data/books`);
-
-  const initializeLibrary = async () => {
-    try {
-      await setDoc(docRef, { addedBookIds: ALL_BOOK_IDS }, { merge: true });
-    } catch (e) {
-      console.error("Failed to initialize library with all books:", e);
-    }
-  };
+const docRef = doc(db, "users", userId, "library", "books");
 
   libraryUnsubscribe = onSnapshot(
     docRef,
     (docSnap) => {
       if (!docSnap.exists()) {
-        initializeLibrary();
-      }
+  setDoc(docRef, { addedBookIds: [] });
+}
 
       const data = docSnap.exists() ? docSnap.data() : {};
       const addedBookIds = data.addedBookIds || [];
@@ -173,7 +165,8 @@ function setupLibraryListener() {
 // --- Library Management Actions ---
 async function addBookToLibrary(bookId) {
   if (!db || !userId) return;
-const docRef = doc(db, `users/${userId}/library_data/books`);
+const docRef = doc(db, "users", userId, "library", "books");
+
 
   try {
     const currentIds = libraryBooks.map(b => b.id);
@@ -188,7 +181,7 @@ const docRef = doc(db, `users/${userId}/library_data/books`);
 
 async function removeBookFromLibrary(bookId) {
   if (!db || !userId) return;
-const docRef = doc(db, `users/${userId}/library_data/books`);
+const docRef = doc(db, "users", userId, "library", "books");
 
   try {
     const currentIds = libraryBooks.map(b => b.id);
