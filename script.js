@@ -18,15 +18,10 @@ import {
 // --- Global Setup (matches your React code) ---
 const appId = typeof window.__app_id !== "undefined" ? window.__app_id : "default-app-id";
 // Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCV-odih1iwo4LtvMod3unbQn2KIB-xWmA",
-  authDomain: "hackathon-e14d8.firebaseapp.com",
-  projectId: "hackathon-e14d8",
-  storageBucket: "hackathon-e14d8.firebasestorage.app",
-  messagingSenderId: "351649267688",
-  appId: "1:351649267688:web:3a4a577ff2c104768dae5d",
-  measurementId: "G-7NVMJVWM7Z"
-};
+const firebaseConfig = typeof window.__firebase_config !== "undefined"
+  ? JSON.parse(window.__firebase_config)
+  : {};
+
 
 const initialAuthToken = typeof window.__initial_auth_token !== "undefined"
   ? window.__initial_auth_token
@@ -98,7 +93,7 @@ let coachAudioElement = null; // hidden <audio> element for feedback playback
 // --- Firebase Initialization and Auth ---
 function initFirebase() {
   try {
-    const app = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
     // Optional: analytics only works on https + production
     // const analytics = getAnalytics(app);
 
