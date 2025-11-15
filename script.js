@@ -264,6 +264,23 @@ async function sendCoachAudio() {
       body: JSON.stringify({ audio: base64Audio })
     });
 
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    // 👇 FIX #1: Detect JSON error responses
+    const contentType = response.headers.get("Content-Type");
+
+    if (contentType && contentType.includes("application/json")) {
+      const json = await response.json();
+      console.error("Coach error:", json.error);
+      coachState.status = "Coach error: " + (json.error || "Unknown error");
+      coachState.isProcessing = false;
+      updateCoachUI();
+      return;
+    }
+
+    // 👇 FIX #2: Read audio blob safely
     const audioFile = await response.blob();
     const url = URL.createObjectURL(audioFile);
 
@@ -271,12 +288,15 @@ async function sendCoachAudio() {
     coachState.isProcessing = false;
     coachState.status = "Feedback ready!";
     updateCoachUI();
+
   } catch (err) {
+    console.error("Fetch error:", err);
     coachState.status = "Error contacting coach.";
     coachState.isProcessing = false;
     updateCoachUI();
   }
 }
+
 
 function playCoachFeedback() {
   ensureCoachAudioElement();
